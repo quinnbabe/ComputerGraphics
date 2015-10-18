@@ -1,0 +1,60 @@
+<!! ASSIGNMENT DUE WEDNESDAY SEPTEMBER 18, 2013 FOR KEN PERLIN'S GRAPHICS CLASS>
+
+<script src="script.js"></script>
+
+<script id="title" type="text/plain">
+Fingers
+</script>
+
+<script id="description" type="text/plain">
+Your homework this week is to write a more interesting shader than the one below.
+
+A fragment shader can use time plus position as input, and produce color as output.
+
+NOTE 1: Allowable data types: float, vec2, vec3 and vec4.
+NOTE 2: Constants must have decimal points. Example: "4.0", not "4".
+
+</script>
+
+<!! REPLACE THE TEXT BELOW WITH YOUR SHADER CODE>
+
+<script id="shader" type="x-shader/x-fragment">
+void main(void) {
+    
+    // extract u, v and time from input parameters:
+    
+    float u = vUV.x;
+    float v = vUV.y;
+    float time = uTime;
+    
+    //// YOUR CODE SHOULD GO FROM HERE TO MATCHING COMMENT BELOW:
+    
+    // Make a pretty pattern using sine waves:
+    
+    float scale = 1.0;
+    float x = scale * u;
+    float y = scale * v;
+    
+    float s1 = sin(20.0 * x * y);
+    float s2 = sin(15.0 * x) * sin(15.0 * y) + sin(5.0 * time) * log(2.0 + 2.5 * cos(20.0 * x) * sqrt(y * 10.0));
+    float s3 = sin(time * 4.0) + sin(6.0 * time) * x - cos(4.0 * time) * y;
+    
+    float s = s1 + s2 - s3;
+    if( x / y > 1.0) { s = -s; u *= 0.2; v *= 0.8; }
+    if( x > sqrt(y) ) { s = -s; u /= 0.2; v /= 0.8; }
+    
+    // Use u and v to vary red and green insensity, and
+    // use the sine pattern to vary blue intensity:
+    
+    vec3 color = vec3(u, v, s);
+    
+    //// THIS IS THE MATCHING COMMENT.
+    
+    // Send final color to output, and add an opacity channel:
+    
+    gl_FragColor = vec4(color, 1.0);
+}
+</script>
+
+<script>start()</script>
+

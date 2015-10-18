@@ -1,0 +1,486 @@
+
+<head><script src=gl.js></script><script src=build.js></script></head>
+<body style=" background: radial-gradient(#2299dd, #000000)" onload=glStart();>
+    <center>
+        <!--
+         <table width=90%><tr><td>
+         <hr color=white size=20>
+         
+         <tr>
+         <td>
+         <center><canvas id=canvas1 data-render=gl width=400 height=400
+         tabindex="1"></canvas></center>
+         
+         <td>&nbsp;</td>
+         <td>
+         <center><canvas id=canvas2 data-render=gl width=400 height=400
+         tabindex="1"></canvas></center>
+         </td>
+         </tr>
+         </table>
+         </center>
+         <hr>
+         -->
+        <div style="cursor:crosshair">
+            <h2 style="font-family:sans-serif;color:yellow">squid(buddy)</h2>
+            <p style="font-family:sans-serif;color:white;font-size:1em">use the mouse to control the motion</p>
+            <canvas id=canvas1 data-render=gl width=600 height=600
+                tabindex="1"></canvas>
+        </div>
+        
+        
+        <script id=fs_phong type=x-shader/x-fragment>
+            uniform float time;
+            uniform float sc;
+            uniform float p[10];
+            uniform vec3 lDir;
+            varying vec3 vNormal;
+            varying vec2 vUV;
+            varying vec3 vXYZ;
+            varying vec3 wXYZ;
+            
+            /////////////////////////////////
+            
+            
+            
+            vec4 mod289(vec4 x)
+            {
+                return x - floor(x * (1.0 / 289.0)) * 289.0;
+            }
+        
+        vec4 permute(vec4 x)
+        {
+            return mod289(((x*34.0)+1.0)*x);
+        }
+        
+        vec4 taylorInvSqrt(vec4 r)
+        {
+            return 1.79284291400159 - 0.85373472095314 * r;
+        }
+        
+        vec4 fade(vec4 t) {
+            return t*t*t*(t*(t*6.0-15.0)+10.0);
+        }
+        
+        // Classic Perlin noise
+        float cnoise(vec4 P)
+        {
+            vec4 Pi0 = floor(P); // Integer part for indexing
+            vec4 Pi1 = Pi0 + 1.0; // Integer part + 1
+            Pi0 = mod289(Pi0);
+            Pi1 = mod289(Pi1);
+            vec4 Pf0 = fract(P); // Fractional part for interpolation
+            vec4 Pf1 = Pf0 - 1.0; // Fractional part - 1.0
+            vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);
+            vec4 iy = vec4(Pi0.yy, Pi1.yy);
+            vec4 iz0 = vec4(Pi0.zzzz);
+            vec4 iz1 = vec4(Pi1.zzzz);
+            vec4 iw0 = vec4(Pi0.wwww);
+            vec4 iw1 = vec4(Pi1.wwww);
+            
+            vec4 ixy = permute(permute(ix) + iy);
+            vec4 ixy0 = permute(ixy + iz0);
+            vec4 ixy1 = permute(ixy + iz1);
+            vec4 ixy00 = permute(ixy0 + iw0);
+            vec4 ixy01 = permute(ixy0 + iw1);
+            vec4 ixy10 = permute(ixy1 + iw0);
+            vec4 ixy11 = permute(ixy1 + iw1);
+            
+            vec4 gx00 = ixy00 * (1.0 / 7.0);
+            vec4 gy00 = floor(gx00) * (1.0 / 7.0);
+            vec4 gz00 = floor(gy00) * (1.0 / 6.0);
+            gx00 = fract(gx00) - 0.5;
+            gy00 = fract(gy00) - 0.5;
+            gz00 = fract(gz00) - 0.5;
+            vec4 gw00 = vec4(0.75) - abs(gx00) - abs(gy00) - abs(gz00);
+            vec4 sw00 = step(gw00, vec4(0.0));
+            gx00 -= sw00 * (step(0.0, gx00) - 0.5);
+            gy00 -= sw00 * (step(0.0, gy00) - 0.5);
+            
+            vec4 gx01 = ixy01 * (1.0 / 7.0);
+            vec4 gy01 = floor(gx01) * (1.0 / 7.0);
+            vec4 gz01 = floor(gy01) * (1.0 / 6.0);
+            gx01 = fract(gx01) - 0.5;
+            gy01 = fract(gy01) - 0.5;
+            gz01 = fract(gz01) - 0.5;
+            vec4 gw01 = vec4(0.75) - abs(gx01) - abs(gy01) - abs(gz01);
+            vec4 sw01 = step(gw01, vec4(0.0));
+            gx01 -= sw01 * (step(0.0, gx01) - 0.5);
+            gy01 -= sw01 * (step(0.0, gy01) - 0.5);
+            
+            vec4 gx10 = ixy10 * (1.0 / 7.0);
+            vec4 gy10 = floor(gx10) * (1.0 / 7.0);
+            vec4 gz10 = floor(gy10) * (1.0 / 6.0);
+            gx10 = fract(gx10) - 0.5;
+            gy10 = fract(gy10) - 0.5;
+            gz10 = fract(gz10) - 0.5;
+            vec4 gw10 = vec4(0.75) - abs(gx10) - abs(gy10) - abs(gz10);
+            vec4 sw10 = step(gw10, vec4(0.0));
+            gx10 -= sw10 * (step(0.0, gx10) - 0.5);
+            gy10 -= sw10 * (step(0.0, gy10) - 0.5);
+            
+            vec4 gx11 = ixy11 * (1.0 / 7.0);
+            vec4 gy11 = floor(gx11) * (1.0 / 7.0);
+            vec4 gz11 = floor(gy11) * (1.0 / 6.0);
+            gx11 = fract(gx11) - 0.5;
+            gy11 = fract(gy11) - 0.5;
+            gz11 = fract(gz11) - 0.5;
+            vec4 gw11 = vec4(0.75) - abs(gx11) - abs(gy11) - abs(gz11);
+            vec4 sw11 = step(gw11, vec4(0.0));
+            gx11 -= sw11 * (step(0.0, gx11) - 0.5);
+            gy11 -= sw11 * (step(0.0, gy11) - 0.5);
+            
+            vec4 g0000 = vec4(gx00.x,gy00.x,gz00.x,gw00.x);
+            vec4 g1000 = vec4(gx00.y,gy00.y,gz00.y,gw00.y);
+            vec4 g0100 = vec4(gx00.z,gy00.z,gz00.z,gw00.z);
+            vec4 g1100 = vec4(gx00.w,gy00.w,gz00.w,gw00.w);
+            vec4 g0010 = vec4(gx10.x,gy10.x,gz10.x,gw10.x);
+            vec4 g1010 = vec4(gx10.y,gy10.y,gz10.y,gw10.y);
+            vec4 g0110 = vec4(gx10.z,gy10.z,gz10.z,gw10.z);
+            vec4 g1110 = vec4(gx10.w,gy10.w,gz10.w,gw10.w);
+            vec4 g0001 = vec4(gx01.x,gy01.x,gz01.x,gw01.x);
+            vec4 g1001 = vec4(gx01.y,gy01.y,gz01.y,gw01.y);
+            vec4 g0101 = vec4(gx01.z,gy01.z,gz01.z,gw01.z);
+            vec4 g1101 = vec4(gx01.w,gy01.w,gz01.w,gw01.w);
+            vec4 g0011 = vec4(gx11.x,gy11.x,gz11.x,gw11.x);
+            vec4 g1011 = vec4(gx11.y,gy11.y,gz11.y,gw11.y);
+            vec4 g0111 = vec4(gx11.z,gy11.z,gz11.z,gw11.z);
+            vec4 g1111 = vec4(gx11.w,gy11.w,gz11.w,gw11.w);
+            
+            vec4 norm00 = taylorInvSqrt(vec4(dot(g0000, g0000), dot(g0100, g0100), dot(g1000, g1000), dot(g1100, g1100)));
+            g0000 *= norm00.x;
+            g0100 *= norm00.y;
+            g1000 *= norm00.z;
+            g1100 *= norm00.w;
+            
+            vec4 norm01 = taylorInvSqrt(vec4(dot(g0001, g0001), dot(g0101, g0101), dot(g1001, g1001), dot(g1101, g1101)));
+            g0001 *= norm01.x;
+            g0101 *= norm01.y;
+            g1001 *= norm01.z;
+            g1101 *= norm01.w;
+            
+            vec4 norm10 = taylorInvSqrt(vec4(dot(g0010, g0010), dot(g0110, g0110), dot(g1010, g1010), dot(g1110, g1110)));
+            g0010 *= norm10.x;
+            g0110 *= norm10.y;
+            g1010 *= norm10.z;
+            g1110 *= norm10.w;
+            
+            vec4 norm11 = taylorInvSqrt(vec4(dot(g0011, g0011), dot(g0111, g0111), dot(g1011, g1011), dot(g1111, g1111)));
+            g0011 *= norm11.x;
+            g0111 *= norm11.y;
+            g1011 *= norm11.z;
+            g1111 *= norm11.w;
+            
+            float n0000 = dot(g0000, Pf0);
+            float n1000 = dot(g1000, vec4(Pf1.x, Pf0.yzw));
+            float n0100 = dot(g0100, vec4(Pf0.x, Pf1.y, Pf0.zw));
+            float n1100 = dot(g1100, vec4(Pf1.xy, Pf0.zw));
+            float n0010 = dot(g0010, vec4(Pf0.xy, Pf1.z, Pf0.w));
+            float n1010 = dot(g1010, vec4(Pf1.x, Pf0.y, Pf1.z, Pf0.w));
+            float n0110 = dot(g0110, vec4(Pf0.x, Pf1.yz, Pf0.w));
+            float n1110 = dot(g1110, vec4(Pf1.xyz, Pf0.w));
+            float n0001 = dot(g0001, vec4(Pf0.xyz, Pf1.w));
+            float n1001 = dot(g1001, vec4(Pf1.x, Pf0.yz, Pf1.w));
+            float n0101 = dot(g0101, vec4(Pf0.x, Pf1.y, Pf0.z, Pf1.w));
+            float n1101 = dot(g1101, vec4(Pf1.xy, Pf0.z, Pf1.w));
+            float n0011 = dot(g0011, vec4(Pf0.xy, Pf1.zw));
+            float n1011 = dot(g1011, vec4(Pf1.x, Pf0.y, Pf1.zw));
+            float n0111 = dot(g0111, vec4(Pf0.x, Pf1.yzw));
+            float n1111 = dot(g1111, Pf1);
+            
+            vec4 fade_xyzw = fade(Pf0);
+            vec4 n_0w = mix(vec4(n0000, n1000, n0100, n1100), vec4(n0001, n1001, n0101, n1101), fade_xyzw.w);
+            vec4 n_1w = mix(vec4(n0010, n1010, n0110, n1110), vec4(n0011, n1011, n0111, n1111), fade_xyzw.w);
+            vec4 n_zw = mix(n_0w, n_1w, fade_xyzw.z);
+            vec2 n_yzw = mix(n_zw.xy, n_zw.zw, fade_xyzw.y);
+            float n_xyzw = mix(n_yzw.x, n_yzw.y, fade_xyzw.x);
+            return 2.2 * n_xyzw;
+        }
+        
+        //////////////////////////////////
+        /*
+         vec4 mod289(vec4 x)
+         {
+         return x - floor(x * (1.0 / 289.0)) * 289.0;
+         }
+         
+         vec4 permute(vec4 x)
+         {
+         return mod289(((x*34.0)+1.0)*x);
+         }
+         
+         vec4 taylorInvSqrt(vec4 r)
+         {
+         return 1.79284291400159 - 0.85373472095314 * r;
+         }
+         
+         vec2 fade(vec2 t) {
+         return t*t*t*(t*(t*6.0-15.0)+10.0);
+         }
+         
+         // Classic Perlin noise //
+         float cnoise(vec2 P)
+         {
+         vec4 Pi = floor(P.xyxy) + vec4(0.0, 0.0, 1.0, 1.0);
+         vec4 Pf = fract(P.xyxy) - vec4(0.0, 0.0, 1.0, 1.0);
+         Pi = mod289(Pi); // To avoid truncation effects in permutation
+         vec4 ix = Pi.xzxz;
+         vec4 iy = Pi.yyww;
+         vec4 fx = Pf.xzxz;
+         vec4 fy = Pf.yyww;
+         
+         vec4 i = permute(permute(ix) + iy);
+         
+         vec4 gx = fract(i * (1.0 / 41.0)) * 2.0 - 1.0 ;
+         vec4 gy = abs(gx) - 0.5 ;
+         vec4 tx = floor(gx + 0.5);
+         gx = gx - tx;
+         
+         vec2 g00 = vec2(gx.x,gy.x);
+         vec2 g10 = vec2(gx.y,gy.y);
+         vec2 g01 = vec2(gx.z,gy.z);
+         vec2 g11 = vec2(gx.w,gy.w);
+         
+         vec4 norm = taylorInvSqrt(vec4(dot(g00, g00), dot(g01, g01), dot(g10, g10), dot(g11, g11)));
+         g00 *= norm.x;
+         g01 *= norm.y;
+         g10 *= norm.z;
+         g11 *= norm.w;
+         
+         float n00 = dot(g00, vec2(fx.x, fy.x));
+         float n10 = dot(g10, vec2(fx.y, fy.y));
+         float n01 = dot(g01, vec2(fx.z, fy.z));
+         float n11 = dot(g11, vec2(fx.w, fy.w));
+         
+         vec2 fade_xy = fade(Pf.xy);
+         vec2 n_x = mix(vec2(n00, n01), vec2(n10, n11), fade_xy.x);
+         float n_xy = mix(n_x.x, n_x.y, fade_xy.y);
+         return 2.3 * n_xy;
+         }
+         */
+        float count = 0.;
+        
+        void main(void) {
+            count+=1.5;
+            
+            // NORMALIZE LENGTH OF THE INTERPOLATED NORMAL
+            
+            vec2 noise = vec2(sin(vUV.x*sin(time+vUV.x*33.)*4.5),sin(vUV.y*sin(vUV.y*33.)*4.5));
+            
+            vec3 normal = normalize(vNormal)*((cnoise(vec4(vec3(vXYZ)*32.01*sc,time))));//*vUV*20.)*.1)+.9);
+            
+            // COMPUTE DIFFUSE FACTOR
+            
+            
+            
+            float ldn = dot(lDir, normal);
+            float diffuse = (-normal.z+1.)+max(0., ldn);//*noise.y;
+            
+            // COMPUTE SPECULAR FACTOR
+            
+            vec3 refl = 2. * ldn * normal - lDir;
+            float specular = pow(max(0., refl.z)*((-normal.z+1.)*3.)*(max(0.,1.+cnoise((vec4(vec3(wXYZ)*132.01*sc,time)))))/*cos(time)*vUV*20.)+1.)*1.)*/, p[9]);
+            
+            float water = vNormal.y*(-1.*(abs(cnoise(vec4(vec3(wXYZ.x,wXYZ.y*0.5,wXYZ.z)*-7.,1.))))+0.5);
+            // SUM PHONG REFLECTION COMPONENTS
+            
+            vec3 c = vec3(p[0],p[1],p[2]) * (vNormal.y + 1.) +
+            vec3(p[3],p[4],p[5]) * diffuse +
+            vec3(p[6],p[7],p[8]) * specular +
+            vec3(0.,.3,.4)*max(0.,wXYZ.z+.2) +
+            max(0.,water);
+            
+            
+            // APPLY GAMMA CORRECTION
+            //gl_FragColor = gl_FragCoord;
+            gl_FragColor = vec4(pow(c.x,1.),pow(c.y,0.45),pow(c.z,0.45),1.);
+        }
+        </script>
+        
+        <script id=fs_uv type=x-shader/x-fragment>
+            uniform vec3 rgb;
+            varying vec3 vNormal;
+            varying vec2 vUV;
+            void main(void) {
+                float c = 2.*max(0.,dot(vec3(.3,.3,.3),normalize(vNormal)));
+                float u = .5+.5*sin(30.*vUV.x);
+                float v = .5+.5*sin(40.*vUV.y);
+                gl_FragColor = vec4(c*rgb*vec3(u,v,1.), 1.);
+            }
+        </script>
+        
+        <script>
+            
+            
+            canvas1.setup = function() {
+                
+                
+                
+                
+                this.tents = [];
+                
+                this.addTent(10,'sphere',24);
+                
+                for(var i = 1 ; i < 9 ; i++){
+                    this.addTent(20,'sphere');
+                    this.tents[0][0].add(this.tents[i][0]);
+                }
+                for(var i = 0 ; i < 4 ; i++){
+                    this.addTent(1,'sphere');
+                    this.tents[0][9].add(this.tents[i+9][0]);
+                }
+                console.log(this.tents);
+                
+                
+                
+            }
+        
+        canvas1.addTent = function(num,typer,div){
+            var that = this;
+            var type = typer || 'cube';
+            var d = div || 12;
+            
+            //var num = num;
+            var tent = [];
+            
+            for(var i = 0 ; i < num ; i++){
+                
+                if(type=='cube')
+                that.addObject(createCube(), 'fs_phong');
+                else
+                this.addObject(createParametric(1/(d*2),1/d,sph), 'fs_phong');
+                tent.push(that.objects[that.objects.length-1]);
+                
+                if(i>0){
+                    tent[i-1].add(tent[i]);
+                }
+            }
+            
+            that.tents.push(tent);
+            
+        }
+        
+        canvas1.update = function() {
+            
+            var blurry = Math.cos(Math.PI+time*2);
+            
+            var stringy = "blur("+blurry*5+"px)";
+            
+            canvas1.style.webkitFilter = stringy;
+            
+            for(var i = 0 ; i < this.tents.length ; i++){
+                var color = 0;
+                for(var j = 0 ; j < this.tents[i].length ; j++){
+                    
+                    var obj = this.tents[i][j];
+                    
+                    var off = 0;
+                    
+                    if(i>0)
+                    off=.7;
+                    
+                    var parms = [];
+                    
+                    var m = ((this.mouseX*0.01)+1)||1;
+                    
+                    //parms.x = Math.sin(time*5)*.05;
+                    parms.y = .1;
+                    parms.rz = Math.sin((i/9)+(m*-time+off+(j/10))*2)*.04*j*((this.mouseY*0.002)+0.1);
+                    parms.rx = Math.sin((i/9)+(m*-time+off+(j/5))*1)*.007*j;
+                    parms.sx = parms.sy = parms.sz = .92;
+                    
+                    
+                    //head
+                    
+                    if(i==0){
+                        if(j==0){
+                            parms.sx = parms.sy = parms.sz = 1.15;
+                            parms.y = -.1+Math.sin((m*-time+off)*2)*.1;
+                            parms.z = Math.sin(time)*20;
+                            parms.rz = Math.sin(m*-time+off*1)*-.5;
+                            parms.ry = (time)+this.mouseX*0.01;
+                        }
+                        
+                        else{
+                            parms.sx = parms.sy = parms.sz = 1.1;
+                            parms.y = .02+0.2*(Math.sin((m*-time-off+(j/10))*2)*0.02);
+                            parms.rz = Math.sin((i/10)+(m*-time+off+(j/10))*1)*.01*j;
+                        }
+                        
+                        parms.rx = Math.sin((m*-time+off+(j/5))*1)*.01*j;
+                        
+                    }
+                    
+                    //legs
+                    if(i>0 && i<9 && j==0){
+                        parms.y = -.02;
+                        //parms.x = -.05;
+                        //parms.z = -.1;
+                        parms.rz = (Math.sin((i/9)+(m*-time+off)*2)*.5)-2;
+                        parms.rx = 0;
+                        parms.ry = (i+2)/Math.PI*2.5;
+                        parms.sx = parms.sy = parms.sz = .85;
+                    }
+                    if(i>0 && i<9){
+                        //  parms.ry = j;
+                    }
+                    
+                    if(i==9){
+                        parms.sx = parms.sy = parms.sz = 0.1;
+                        parms.z = 1;
+                    }
+                    if(i==10){
+                        parms.sx = parms.sy = parms.sz = 0.1;
+                        parms.x =1;
+                    }
+                    if(i==11){
+                        parms.sx  = parms.sz = 1.2;
+                        parms.sy = 0.2;
+                        parms.y =.2;
+                    }
+                    if(i==12){
+                        parms.sx  = parms.sz = parms.sy = 1;
+                        parms.y =0.051;
+                    }
+                    
+                    var scaleMat = makeMatrix(parms);
+                    
+                    obj.pMatrix = scaleMat;
+                    
+                    obj.matrix = recurse(obj,obj.pMatrix);
+                    
+                    color+=(1/this.tents[i].length);
+                    obj.setUniform('p', [0,color*.2,color*.2, color*.6,0,color, 1,.5,.3,1]);
+                    
+                    obj.setUniform('sc',1);
+                    
+                    if(i>8){
+                        obj.setUniform('p', [0,color*.0,color*.0, color*.20,0,color*0.1, .1,.2,.3,1]);
+                        obj.setUniform('sc',9);
+                    }
+                    //if(i==4&&j==9) //make the head red
+                    //   obj.setUniform('p', [.2,.02,0, 1,0,0, 1,.3,0,3]);
+                    
+                    obj.setUniform('lDir', [.1,.5,0.0]);
+                    obj.setUniform('time', time+j);
+                    
+                    
+                }
+            }
+            if (this.mousePressed)
+            console.log("canvas1 drag " + this.mouseX + " " + this.mouseY);
+        }
+        
+        
+        var sph = function(u,v) {
+            var theta = 2 * Math.PI * u,
+            phi = Math.PI * (v - .5),
+            cosT = Math.cos(theta) *.1, cosP = Math.cos(phi)*1 ,
+            sinT = Math.sin(theta) *.1, sinP = Math.sin(phi)*.1 ;
+            return [ cosT * cosP, sinT * cosP, sinP ];
+        }
+        
+            </script>
+    </center>
+</body>
+

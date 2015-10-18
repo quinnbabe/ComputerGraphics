@@ -1,0 +1,48 @@
+<script src="script.js"></script>
+
+<script id="shader" type="x-shader/x-fragment">
+    
+    float PI = 3.14159265359;
+    
+    float radius(float x, float y) {
+        return sqrt(x*x + y*y);
+    }
+
+float ang(float x, float y) {
+    return atan(y/x);
+}
+
+float spiral(float r, float a, float time, float scale, float shift) {
+    float wave = sin( r * sin(time * scale + shift) + a * 2. * PI);
+    return (wave + 1.) / 2.;
+}
+
+void main(void) {
+    
+    float x = vUV.x - 0.5;
+    float y = vUV.y - 0.5;
+    float time = uTime;
+    
+    float r = x + 0.5;   float g = y + 0.5;   float b = (r + g) / 2.;
+    
+    ////////////////////////////////////////////////////////////////////////
+    
+    float a = (sin(ang(x * 100., y * 100.)) + 1.)/2.;
+    float rad = radius(x, y) * 50.;
+    
+    
+    r = spiral(rad, a, time, 0.375, 0.);
+    g = spiral(rad, a, time, 1., 0.);
+    b = spiral(rad, a, time, 0.25, 0.);
+    
+    r = pow(r, 5.);
+    g = pow(g, 1.);
+    b = pow(b, 0.5);
+    
+    ////////////////////////////////////////////////////////////////////////
+    
+    vec3 color = vec3(r, g, b);
+    gl_FragColor = vec4(color, 1.0);
+}
+</script>
+<script>start()</script>

@@ -1,0 +1,340 @@
+
+<head><script src=gl.js></script><script src=build.js></script></head>
+<body onload=glStart();>
+    <center>
+        <!--
+         <table width=90%><tr><td>
+         <hr color=white size=20>
+         
+         <tr>
+         <td>
+         <center><canvas id=canvas1 data-render=gl width=400 height=400
+         tabindex="1"></canvas></center>
+         
+         <td>&nbsp;</td>
+         <td>
+         <center><canvas id=canvas2 data-render=gl width=400 height=400
+         tabindex="1"></canvas></center>
+         </td>
+         </tr>
+         </table>
+         </center>
+         <hr>
+         -->
+        <h1 style="font-family:sans-serif">mat4mations</h1>
+        <p style="font-family:sans-serif">use the mouse to control the motion</p>
+        <canvas id=canvas1 data-render=gl width=400 height=400
+            tabindex="1"></canvas>
+        <canvas id=canvas2 data-render=gl width=400 height=400
+            tabindex="1"></canvas><br>
+        <canvas id=canvas3 data-render=gl width=400 height=400
+            tabindex="1"></canvas>
+        <canvas id=canvas4 data-render=gl width=400 height=400
+            tabindex="1"></canvas>
+        
+        <script id=fs_phong type=x-shader/x-fragment>
+            uniform float p[10];
+            uniform vec3 lDir;
+            varying vec3 vNormal;
+            
+            void main(void) {
+                
+                // NORMALIZE LENGTH OF THE INTERPOLATED NORMAL
+                
+                vec3 normal = normalize(vNormal);
+                
+                // COMPUTE DIFFUSE FACTOR
+                
+                float ldn = dot(lDir, normal);
+                float diffuse = max(0., ldn);
+                
+                // COMPUTE SPECULAR FACTOR
+                
+                vec3 refl = 2. * ldn * normal - lDir;
+                float specular = pow(max(0., refl.z), p[9]);
+                
+                // SUM PHONG REFLECTION COMPONENTS
+                
+                vec3 c = vec3(p[0],p[1],p[2]) +
+                vec3(p[3],p[4],p[5]) * diffuse +
+                vec3(p[6],p[7],p[8]) * specular;
+                
+                // APPLY GAMMA CORRECTION
+                
+                gl_FragColor = vec4(pow(c.x,1.),pow(c.y,0.45),pow(c.z,0.45),1.);
+            }
+        </script>
+        
+        <script id=fs_uv type=x-shader/x-fragment>
+            uniform vec3 rgb;
+            varying vec3 vNormal;
+            varying vec2 vUV;
+            void main(void) {
+                float c = 2.*max(0.,dot(vec3(.3,.3,.3),normalize(vNormal)));
+                float u = .5+.5*sin(30.*vUV.x);
+                float v = .5+.5*sin(40.*vUV.y);
+                gl_FragColor = vec4(c*rgb*vec3(u,v,1.), 1.);
+            }
+        </script>
+        
+        <script>
+            canvas1.setup = function() {
+                
+                var num = 80;
+                this.tent1 = [];
+                
+                for(var i = 0 ; i < num ; i++){
+                    
+                    this.addObject(createCube(), 'fs_phong');
+                    this.tent1.push(this.objects[i]);
+                    
+                    if(i>0){
+                        this.objects[i-1].add(this.objects[i]);
+                    }
+                }
+                
+                
+                
+            }
+        
+        canvas1.update = function() {
+            
+            
+            var color = 0;
+            
+            for(var j = 0 ; j < this.tent1.length ; j++){
+                
+                var obj = this.tent1[j];
+                
+                
+                var parms = [];
+                
+                var m = this.mouseX*0.01;
+                
+                //parms.x = Math.sin(time*5)*.05;
+                parms.y = .1;
+                parms.rz = Math.sin((m*time+(j/10))*2)*.01*j;
+                parms.rx = Math.sin((m*time+(j/5))*1)*.003*j;
+                parms.sx = parms.sy = parms.sz = .97;
+                
+                if(j==0){
+                    parms.y = -1;
+                }
+                
+                var scaleMat = makeMatrix(parms);
+                
+                obj.pMatrix = scaleMat;
+                
+                obj.matrix = recurse(obj,obj.pMatrix);
+                
+                color+=(1/this.objects.length);
+                obj.setUniform('p', [color,0,0, color,color,0, 1,1,1,10]);
+                obj.setUniform('lDir', [.57,.57,.57]);
+                
+                
+            }
+            
+            if (this.mousePressed)
+            console.log("canvas1 drag " + this.mouseX + " " + this.mouseY);
+        }
+        
+        canvas2.setup = function() {
+            
+            var num = 80;
+            this.tent1 = [];
+            
+            for(var i = 0 ; i < num ; i++){
+                
+                this.addObject(createCube(), 'fs_phong');
+                this.tent1.push(this.objects[i]);
+                
+                if(i>0){
+                    this.objects[i-1].add(this.objects[i]);
+                }
+            }
+            
+            
+            
+        }
+        
+        canvas2.update = function() {
+            
+            var color = 0;
+            
+            for(var j = 0 ; j < this.tent1.length ; j++){
+                
+                var obj = this.tent1[j];
+                
+                
+                var parms = [];
+                
+                //parms.x = Math.sin(time*5)*.05;
+                parms.y = .1;
+                parms.rz = Math.sin((time+(j/10))*2)*.01*j*(this.mouseY*0.01);
+                parms.rx = (Math.sin((time+(j/15))*.1)*-.001)-.02;
+                parms.ry = Math.sin(time*3)*0.001*this.mouseX;
+                parms.sx = parms.sy = parms.sz = .975;
+                
+                if(j==0){
+                    parms.y = -1;
+                }
+                
+                var scaleMat = makeMatrix(parms);
+                
+                obj.pMatrix = scaleMat;
+                
+                obj.matrix = recurse(obj,obj.pMatrix);
+                
+                color+=(1/this.objects.length);
+                obj.setUniform('p', [color,0,0, 0,color,color, 1,1,1,100]);
+                obj.setUniform('lDir', [.57,.57,.57]);
+                
+                
+            }
+            
+            if (this.mousePressed)
+            console.log("canvas2 drag " + this.mouseX + " " + this.mouseY);
+        }
+        canvas3.setup = function() {
+            
+            var num = 80;
+            this.tent1 = [];
+            
+            for(var i = 0 ; i < num ; i++){
+                
+                this.addObject(createCube(), 'fs_phong');
+                this.tent1.push(this.objects[i]);
+                
+                if(i>0){
+                    this.objects[i-1].add(this.objects[i]);
+                }
+            }
+            
+            
+            
+        }
+        
+        canvas3.update = function() {
+            
+            var color = 0;
+            
+            for(var j = 0 ; j < this.tent1.length ; j++){
+                
+                var obj = this.tent1[j];
+                
+                
+                var parms = [];
+                
+                //parms.x = Math.sin(time*5)*.05;
+                parms.y = .2;
+                parms.ry = Math.sin((time+(j/10))*2)*.01*j*(this.mouseY*0.01);
+                //parms.rz = (Math.sin((time+(j/15))*.1)*-.001)-.02;
+                parms.rx = Math.sin(time*3)*0.1*this.mouseX;
+                parms.ry = 0.2*Math.sin((time*this.mouseY*.001)*3+(j/10));
+                parms.rx = 0.5;
+                parms.sx = parms.sy = parms.sz = .975;
+                
+                if(j==0){
+                    //parms.y = -1;
+                    parms.rz=-1.5;
+                    parms.ry=this.mouseX/50;
+                    parms.sx = parms.sy = parms.sz = .8;
+                }
+                
+                var scaleMat = makeMatrix(parms);
+                
+                obj.pMatrix = scaleMat;
+                
+                obj.matrix = recurse(obj,obj.pMatrix);
+                
+                color+=(1/this.objects.length);
+                obj.setUniform('p', [color/2,color/3,0, 0,color,color, color,1,1,100]);
+                obj.setUniform('lDir', [.57,.57,.57]);
+                
+                
+            }
+            
+            if (this.mousePressed)
+            console.log("canvas2 drag " + this.mouseX + " " + this.mouseY);
+        }
+        canvas4.setup = function() {
+            
+            var num = 80;
+            this.tent1 = [];
+            
+            for(var i = 0 ; i < num ; i++){
+                
+                this.addObject(createCube(), 'fs_phong');
+                this.tent1.push(this.objects[i]);
+                
+                if(i>0){
+                    this.objects[i-1].add(this.objects[i]);
+                }
+            }
+            
+            
+            
+        }
+        
+        canvas4.update = function() {
+            
+            var color = 0;
+            
+            for(var j = 0 ; j < this.tent1.length ; j++){
+                
+                var obj = this.tent1[j];
+                
+                
+                var parms = [];
+                
+                //parms.x = Math.sin(time*5)*.05;
+                parms.y = .2;
+                parms.rz = (Math.sin((time+(j/3))*this.mouseX/200)*.01*j*(this.mouseY*0.01)/2)+0.2;
+                parms.sy += Math.sin(time*10);
+                parms.ry = 0.1;
+                //parms.rx = (Math.sin((time+(j/15))*.1)*-.001)-.02;
+                //parms.ry = Math.sin(time*3)*0.001*this.mouseX;
+                parms.sx  = parms.sz = .975;
+                
+                if(j==0){
+                    parms.y = -.6;
+                    parms.x = -.6;
+                    parms.sx  = parms.sz = parms.sy = .7;
+                }
+                
+                var scaleMat = makeMatrix(parms);
+                
+                obj.pMatrix = scaleMat;
+                
+                obj.matrix = recurse(obj,obj.pMatrix);
+                
+                color+=(1/this.objects.length);
+                
+                var sinColor= Math.abs((Math.sin(color*50))/Math.PI);
+                var sinColor2=Math.abs((Math.sin(color*49))/Math.PI);
+                var sinColor3=Math.abs((Math.sin(color*48))/Math.PI);
+                
+                obj.setUniform('p', [sinColor,0,0, 0,sinColor2*2,sinColor3*1.5, sinColor,1,1,100]);
+                obj.setUniform('lDir', [0.,.57,.27]);
+                
+                
+            }
+            
+            if (this.mousePressed)
+            console.log("canvas2 drag " + this.mouseX + " " + this.mouseY);
+        }
+        
+        var sph = function(u,v) {
+            var theta = 2 * Math.PI * u,
+            phi = Math.PI * (v - .5),
+            cosT = Math.cos(theta) , cosP = Math.cos(phi) ,
+            sinT = Math.sin(theta) , sinP = Math.sin(phi) ;
+            return [ cosT * cosP, sinT * cosP, sinP ];
+        }
+        
+            </script>
+        
+        <hr color=white size=100>
+        </td></tr></table></center>
+</body>
+

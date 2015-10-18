@@ -1,0 +1,200 @@
+
+<body onload=start()>
+    <script src=g.js></script>
+    <script src=m4.js></script>
+    <tr><td>
+        
+        
+        
+        <canvas id=exampleCanvas width=600 height=600 tabindex="1"></canvas>
+        
+        
+        <hr color=white size=100>
+        
+        <script>
+            
+            // GET THE CANVAS ELEMENT AND ITS DRAWING CONTEXT FROM THE DOCUMENT
+            
+            var canvas = document.getElementById('exampleCanvas');
+            var context = canvas.getContext('2d');
+            
+            //vertices and edges of torus
+            
+            var pts=[];
+            var edges=[];
+            var colors= [];
+            
+            var numRevPts=30;
+            var numCircPts=20;
+            var R=1;
+            var r=.2;
+            
+            for(var i=0; i<numRevPts; i++){
+                var a1=i*2*Math.PI/numRevPts;
+                for(var j=0; j<numCircPts; j++){
+                    var a2=j*2*Math.PI/numCircPts;
+                    var x=(R+r*Math.cos(a2))*Math.cos(a1);
+                    var y=(R+r*Math.cos(a2))*Math.sin(a1);
+                    var z=r*Math.sin(a2);
+                    pts.push([x,y,z]);
+                }
+            }
+        for(var i =0; i<numRevPts; i++){
+            var colorRat=Math.abs(Math.sin(i*Math.PI/numRevPts+Math.PI/3))*256;
+            var colorRat2=Math.abs(Math.sin(i*Math.PI/numRevPts))*256;
+            var colorRat3=Math.abs(Math.sin(i*Math.PI/numRevPts+2*Math.PI/3))*256;
+            
+            
+            for(var j =0; j<numCircPts; j++){
+                edges.push([numCircPts*i+j,numCircPts*i+((j+1)%numCircPts)])
+                edges.push([i*numCircPts+j,(i*numCircPts+j+numCircPts)%(numCircPts*numRevPts)]);
+                colors.push([colorRat,colorRat2,colorRat3]);
+                colors.push([colorRat,colorRat2,colorRat3]);
+                
+            }
+        }
+        
+        
+        
+        // YOUR FUNCTION THAT GETS CALLED EACH ANIMATION FRAME
+        
+        
+        
+        function animate() {
+            
+            // GET THE DIMENSIONS OF THE CANVAS
+            
+            var w = canvas.width, h = canvas.height;
+            
+            // CLEAR THE ENTIRE CANVAS
+            
+            context.fillStyle = '#000000';
+            context.beginPath();
+            context.moveTo(0,0);
+            context.lineTo(w,0);
+            context.lineTo(w,h);
+            context.lineTo(0,h);
+            context.fill();
+            
+            // CREATE THE MATRIX TRANSFORM FOR THIS ANIMATION FRAME.
+            
+            ////////////////////////////////////////////////////////////
+            
+            // NOTE: THIS IS THE PART THAT YOU WILL BE REPLACING WITH
+            // MORE GENERAL KINDS OF TRANSFORMATIONS.
+            
+            var x = Math.cos(time) ;
+            var y = 0 ;
+            var z=0;
+            
+            var translationMatrix = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, x,y,z,1 ];
+            
+            
+            var xRot=time;
+            var yRot=0;
+            var zRot=time;
+            
+            var rotationMatrixX=[1,0,0,0,  0,Math.cos(xRot),Math.sin(xRot),0,  0,-Math.sin(xRot),Math.cos(xRot),0, 0,0,0,1 ];
+            var rotationMatrixY=[Math.cos(yRot),0,-Math.sin(yRot),0,  0,1,0,0,  Math.sin(yRot),0,Math.cos(yRot),0, 0,0,0,1 ];
+            var rotationMatrixZ=[Math.cos(zRot),Math.sin(zRot),0,0,  -Math.sin(zRot),Math.cos(zRot),0,0,  0,0,1,0, 0,0,0,1 ];
+            
+            
+            var a=1.;
+            var b=1.;
+            var c=1.;
+            var scaleMatrix=[a,0,0,0,  0,b,0,0,  0,0,c,0,   0,0,0,1];
+            
+            var matrix=matrixMultiply(scaleMatrix,rotationMatrixX);
+            matrix=matrixMultiply(rotationMatrixY,matrix);
+            matrix=matrixMultiply(rotationMatrixZ,matrix);
+            matrix=matrixMultiply(translationMatrix,matrix);
+            
+            
+            
+            ////////////////////////////////////////////////////////////
+            
+            // SET THE DRAWING COLOR TO BLACK
+            
+            
+            
+            // LOOP THROUGH THE EDGES OF THE CUBE
+            
+            for (var i = 0 ; i < edges.length ; i++) {
+                context.strokeStyle='rgb('+Math.floor(colors[i][0])+','+Math.floor(colors[i][1])+','+Math.floor(colors[i][2])+')';
+                // TRANSFORM THE EDGE'S TWO ENDPOINTS BY THE MATRIX
+                
+                var p0 = transform(pts[edges[i][0]], matrix);
+                var p1 = transform(pts[edges[i][1]], matrix);
+                
+                
+                // ADD DEPTH PERSPECTIVE
+                
+                var a = depthPerspective(p0);
+                var b = depthPerspective(p1);
+                
+                // DRAW THE EDGE AS A 2D LINE ON THE CANVAS
+                
+                context.beginPath();
+                context.moveTo(w/2 + w/4 * a[0], h/2 - w/4 * a[1]);
+                context.lineTo(w/2 + w/4 * b[0], h/2 - w/4 * b[1]);
+                context.stroke();
+            }
+        }
+        
+        // TRANSFORM A POINT BY A MATRIX
+        
+        function transform(p, m) {
+            return [ m[0] * p[0] + m[4] * p[1] + m[ 8] * p[2] + m[12],
+                    m[1] * p[0] + m[5] * p[1] + m[ 9] * p[2] + m[13],
+                    m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14]];
+        }
+        
+        //multiply two matrices
+        function matrixMultiply(m1,m2){
+            var mult = [0,0,0,0,  0,0,0,0,  0,0,0,0  ,0,0,0,0];
+            for(var r = 0; r<4; r++){
+                for(var c=0; c<4; c++){
+                    var sum = 0; 
+                    for(var k=0; k<4; k++){
+                        sum=sum+m1[4*k+r]*m2[4*c+k];
+                    }
+                    mult[4*c+r]=sum;
+                }
+            }
+            return mult;
+        } 
+        
+        
+        
+        // APPLY A SIMPLE DEPTH PERSPECTIVE TRANSFORM
+        
+        var focalLength = 8.0;
+        
+        function depthPerspective(p) {
+            var pz = focalLength / (focalLength - p[2]);
+            return [p[0] * pz, p[1] * pz, pz];
+        }
+        
+        //--- BOILERPLATE CODE TO SUPPORT ANIMATED DRAWING ON AN HTML CANVAS ---
+        
+        var startTime = (new Date()).getTime(), time = startTime;
+        window.requestAnimFrame = (function(callback) {
+                                   return window.requestAnimationFrame ||
+                                   window.webkitRequestAnimationFrame ||
+                                   window.mozRequestAnimationFrame ||
+                                   window.oRequestAnimationFrame ||
+                                   window.msRequestAnimationFrame ||
+                                   function(callback) { window.setTimeout(callback, 1000/60); };
+                                   })();
+                                   function tick() {
+                                       time = ((new Date()).getTime() - startTime) / 1000;
+                                       animate();
+                                       requestAnimFrame(function() { tick(); });
+                                   }
+        tick();
+        
+        //----------------------------------------------------------------------
+        
+            </script>
+        
+    </td></tr>
